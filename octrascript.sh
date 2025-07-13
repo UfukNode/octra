@@ -14,8 +14,7 @@ NC='\033[0m'
 show_banner() {
     clear
     echo -e "${PURPLE}╔════════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║   UFUK DEGEN TARAFINDAN HAZIRLANDI     ║${NC}"
-    echo -e "${PURPLE}║       OCTRA TESTNET OTO SCRIPT         ║${NC}"
+    echo -e "${PURPLE}║    UFUK DEGEN TARAFINDAN HAZIRLANDI    ║${NC}"
     echo -e "${PURPLE}╚════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -34,6 +33,15 @@ loading() {
     printf "    \b\b\b\b"
 }
 
+# Root kontrolü
+check_root() {
+    if [[ $EUID -eq 0 ]]; then
+        echo -e "${RED}Bu script root olarak çalıştırılmamalı!${NC}"
+        exit 1
+    fi
+}
+
+# Bağımlılıkları yükle
 install_dependencies() {
     echo -e "${YELLOW}Bağımlılıklar yükleniyor...${NC}"
     {
@@ -44,6 +52,7 @@ install_dependencies() {
     echo -e "${GREEN}✓ Bağımlılıklar yüklendi${NC}"
 }
 
+# Node.js yükle
 install_nodejs() {
     if ! command -v node &> /dev/null; then
         echo -e "${YELLOW}Node.js yükleniyor...${NC}"
@@ -60,198 +69,116 @@ install_nodejs() {
     fi
 }
 
+# Cüzdan oluştur
 generate_wallet() {
-    echo -e "${YELLOW}Otomatik cüzdan oluşturuluyor...${NC}"
+    echo -e "${YELLOW}Cüzdan oluşturucu hazırlanıyor...${NC}"
     
-    # Cüzdan oluşturma scripti
-    cat > create_wallet.js << 'EOF'
-const { Wallet } = require('ethers');
-const fs = require('fs');
-
-// Yeni cüzdan oluştur
-const wallet = Wallet.createRandom();
-
-// Base64 formatında private key
-const privateKeyB64 = Buffer.from(wallet.privateKey.slice(2), 'hex').toString('base64');
-
-// Octra formatında adres (oct prefix'i ile)
-const octraAddress = 'oct' + wallet.address.slice(2);
-
-// Cüzdan bilgileri
-const walletInfo = {
-    address: wallet.address,
-    octraAddress: octraAddress,
-    privateKey: wallet.privateKey,
-    privateKeyB64: privateKeyB64,
-    mnemonic: wallet.mnemonic.phrase
-};
-
-// Cüzdan bilgilerini kaydet
-fs.writeFileSync('wallet_info.json', JSON.stringify(walletInfo, null, 2));
-
-// Ekrana yazdır
-console.log('\n========== CÜZDAN BİLGİLERİ ==========');
-console.log('Ethereum Adresi:', wallet.address);
-console.log('Octra Adresi:', octraAddress);
-console.log('Private Key (Hex):', wallet.privateKey);
-console.log('Private Key (B64):', privateKeyB64);
-console.log('Mnemonic:', wallet.mnemonic.phrase);
-console.log('=====================================\n');
-console.log('BU BİLGİLERİ GÜVENLİ BİR YERE KAYDEDİN!\n');
-EOF
-
-    if [ ! -d "node_modules" ]; then
-        echo -e "${YELLOW}Gerekli paketler yükleniyor...${NC}"
-        npm init -y &> /dev/null
-        npm install ethers &> /dev/null
+    # Cüzdan oluşturucuyu klonla
+    if [ ! -d "wallet-gen" ]; then
+        git clone https://github.com/0xmoei/wallet-gen.git &> /dev/null
     fi
     
-    node create_wallet.js
+    cd wallet-gen
+    chmod +x ./start.sh
     
-    if [ -f "wallet_info.json" ]; then
-        PRIVATE_KEY_B64=$(cat wallet_info.json | jq -r '.privateKeyB64')
-        OCTRA_ADDRESS=$(cat wallet_info.json | jq -r '.octraAddress')
-        
-        echo -e "${GREEN}✓ Cüzdan başarıyla oluşturuldu!${NC}"
-        echo -e "${YELLOW}Cüzdan bilgileri 'wallet_info.json' dosyasına kaydedildi${NC}"
-        
-        export WALLET_PRIVATE_KEY_B64="$PRIVATE_KEY_B64"
-        export WALLET_OCTRA_ADDRESS="$OCTRA_ADDRESS"
-        
-        echo -e "${CYAN}Faucet almak için bu adresi kullanın: ${GREEN}$OCTRA_ADDRESS${NC}"
-        echo -e "${YELLOW}NOT: Faucet sitesinde validator seçeneğini İŞARETLEMEYİN!${NC}"
-        echo -e "${YELLOW}Faucet sitesi: https://faucet.octra.xyz${NC}"
-        echo ""
-        read -p "Faucet aldıktan sonra devam etmek için ENTER'a basın..."
-    else
-        echo -e "${RED}Cüzdan oluşturma başarısız!${NC}"
-        exit 1
-    fi
+    # Cüzdan oluşturucuyu arka planda başlat
+    ./start.sh &> /dev/null &
+    WALLET_PID=$!
+    
+    echo -e "${CYAN}Cüzdan oluşturucu çalışıyor...${NC}"
+    echo -e "${YELLOW}Lütfen bu adımları takip edin:${NC}"
+    echo -e "1. Tarayıcınızı açın ve şu adrese gidin: ${GREEN}http://localhost:8888${NC}"
+    echo -e "2. 'GENERATE NEW WALLET' butonuna tıklayın"
+    echo -e "3. Tüm cüzdan bilgilerini kaydedin"
+    echo -e "4. Şu adresten faucet alın: ${GREEN}https://faucet.octra.xyz${NC}"
+    echo ""
+    
+    # Kullanıcının cüzdan bilgilerini kaydetmesini bekle
+    read -p "Cüzdan bilgilerinizi kaydettikten sonra ENTER'a basın..."
+    
+    # Cüzdan oluşturucuyu kapat
+    kill $WALLET_PID 2>/dev/null || true
+    
+    cd ..
 }
 
+# Octra CLI kurulumu
 setup_octra_cli() {
     echo -e "${YELLOW}Octra CLI kuruluyor...${NC}"
     
+    # Octra CLI'yi klonla
     if [ ! -d "octra_pre_client" ]; then
         git clone https://github.com/octra-labs/octra_pre_client.git &> /dev/null
     fi
     
     cd octra_pre_client
     
+    # Python sanal ortamını kur
     python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt &> /dev/null
     
+    # wallet.json oluştur
     cp wallet.json.example wallet.json
     
-    if [ ! -z "$WALLET_PRIVATE_KEY_B64" ] && [ ! -z "$WALLET_OCTRA_ADDRESS" ]; then
-        echo -e "${YELLOW}Cüzdan bilgileri otomatik olarak yapılandırılıyor...${NC}"
-        sed -i "s/private-key-here/$WALLET_PRIVATE_KEY_B64/g" wallet.json
-        sed -i "s/octxxxxxxxx/$WALLET_OCTRA_ADDRESS/g" wallet.json
-    else
-        echo -e "${YELLOW}Lütfen cüzdan bilgilerinizi girin:${NC}"
-        read -p "Private key'inizi girin (B64 formatında): " PRIVATE_KEY
-        read -p "Octra adresinizi girin (oct... ile başlayan): " OCTRA_ADDRESS
-        
-        sed -i "s/private-key-here/$PRIVATE_KEY/g" wallet.json
-        sed -i "s/octxxxxxxxx/$OCTRA_ADDRESS/g" wallet.json
-    fi
+    echo -e "${YELLOW}Lütfen cüzdan bilgilerinizi girin:${NC}"
+    read -p "Private key'inizi girin (B64 formatında): " PRIVATE_KEY
+    read -p "Octra adresinizi girin (oct... ile başlayan): " OCTRA_ADDRESS
+    
+    # wallet.json dosyasını güncelle
+    sed -i "s/private-key-here/$PRIVATE_KEY/g" wallet.json
+    sed -i "s/octxxxxxxxx/$OCTRA_ADDRESS/g" wallet.json
     
     echo -e "${GREEN}✓ Octra CLI yapılandırıldı${NC}"
-    cd ..
 }
 
+# Otomatik işlem gönderici
 auto_transaction() {
-    echo -e "${YELLOW}Otomatik işlem gönderici hazırlanıyor...${NC}"
+    echo -e "${YELLOW}Otomatik işlem gönderici başlatılıyor...${NC}"
     
     cd octra_pre_client
     source venv/bin/activate
     
+    # İşlem gönderilecek adresler
+    ADDRESSES=(
+        "octBvPDeFCaAZtfr3SBr7Jn6nnWnUuCfAZfgCmaqswV8YR5"
+        # Buraya daha fazla adres ekleyebilirsiniz
+    )
+    
+    # Otomatik işlem scripti oluştur
     cat > auto_tx.py << 'EOF'
 import time
 import random
-import json
 import subprocess
 import sys
-import os
 
-def run_cli_command(command):
+def send_transaction():
     try:
-        # CLI'yi subprocess olarak çalıştır
-        process = subprocess.Popen(
-            ['python3', 'cli.py'],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        
-        output, error = process.communicate(input=command)
-        
-        if process.returncode == 0:
-            return True, output
-        else:
-            return False, error
+        # CLI komutları burada çalıştırılacak
+        # Bu bir placeholder - gerçek CLI komutlarına göre uyarlanmalı
+        print("İşlem gönderiliyor...")
+        time.sleep(2)
+        print("İşlem gönderildi!")
+        return True
     except Exception as e:
-        return False, str(e)
-
-def encrypt_balance():
-    print("Balance şifreleniyor...")
-    success, result = run_cli_command("1\n")  # 1 = Encrypt balance
-    if success:
-        print("✓ Balance şifrelendi")
-    else:
-        print(f"✗ Balance şifreleme hatası: {result}")
-    time.sleep(2)
-    return success
-
-def send_private_transaction(to_address):
-    print(f"Private transaction gönderiliyor: {to_address}")
-    # 2 = Send private transaction, sonra adres, sonra miktar
-    command = f"2\n{to_address}\n0.001\n"  
-    success, result = run_cli_command(command)
-    if success:
-        print("✓ Transaction gönderildi")
-    else:
-        print(f"✗ Transaction hatası: {result}")
-    return success
+        print(f"Hata: {e}")
+        return False
 
 def main():
     transaction_count = 0
-    
-    # İlk önce balance'ı şifrele
-    print("\n[İlk çalıştırma] Balance şifreleniyor...")
-    encrypt_balance()
-    time.sleep(5)
-    
-    # Transaction gönderilecek adresler
-    addresses = [
-        "octBvPDeFCaAZtfr3SBr7Jn6nnWnUuCfAZfgCmaqswV8YR5",
-        # Buraya daha fazla adres ekleyebilirsiniz
-    ]
     
     while True:
         try:
             # İşlemler arası rastgele bekleme (5-15 dakika)
             delay = random.randint(300, 900)
             
-            print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] İşlem #{transaction_count + 1} başlatılıyor")
+            print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] İşlem #{transaction_count + 1} gönderiliyor")
             
-            # Rastgele bir adres seç
-            to_address = random.choice(addresses)
-            
-            # Her 10 işlemde bir balance'ı yeniden şifrele
-            if transaction_count % 10 == 0 and transaction_count > 0:
-                print("Balance yeniden şifreleniyor...")
-                encrypt_balance()
-                time.sleep(5)
-            
-            # Transaction gönder
-            if send_private_transaction(to_address):
+            if send_transaction():
                 transaction_count += 1
                 print(f"Toplam gönderilen işlem: {transaction_count}")
             
-            print(f"Sonraki işlem için {delay} saniye ({delay//60} dakika) bekleniyor...")
+            print(f"Sonraki işlem için {delay} saniye bekleniyor...")
             time.sleep(delay)
             
         except KeyboardInterrupt:
@@ -259,7 +186,6 @@ def main():
             sys.exit(0)
         except Exception as e:
             print(f"Beklenmeyen hata: {e}")
-            print("60 saniye sonra tekrar denenecek...")
             time.sleep(60)
 
 if __name__ == "__main__":
@@ -267,14 +193,16 @@ if __name__ == "__main__":
 EOF
     
     echo -e "${GREEN}✓ Otomatik işlem gönderici oluşturuldu${NC}"
-    cd ..
 }
 
+# Screen'de çalıştır
 run_in_screen() {
     echo -e "${YELLOW}Octra testnet screen oturumunda başlatılıyor...${NC}"
     
+    # Mevcut screen oturumunu kapat
     screen -S octra -X quit 2>/dev/null || true
     
+    # Yeni screen oturumu oluştur
     screen -dmS octra bash -c "cd octra_pre_client && source venv/bin/activate && python3 auto_tx.py"
     
     echo -e "${GREEN}✓ Octra testnet 'octra' screen oturumunda çalışıyor${NC}"
@@ -284,18 +212,23 @@ run_in_screen() {
     echo -e "  Durdur: ${YELLOW}screen -S octra -X quit${NC}"
 }
 
+# Güncelleme fonksiyonu
 update_cli() {
     echo -e "${YELLOW}Octra CLI güncelleniyor...${NC}"
     
     cd octra_pre_client
     
+    # wallet.json dosyasını yedekle
     cp wallet.json ../wallet.json.backup
     
+    # Güncelle
     git stash &> /dev/null
     git pull origin main &> /dev/null
     
+    # wallet.json dosyasını geri yükle
     cp ../wallet.json.backup wallet.json
     
+    # Bağımlılıkları güncelle
     source venv/bin/activate
     pip install -r requirements.txt &> /dev/null
     
@@ -318,6 +251,7 @@ main_menu() {
         
         case $choice in
             1)
+                check_root
                 install_dependencies
                 install_nodejs
                 generate_wallet

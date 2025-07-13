@@ -1,8 +1,8 @@
 #!/bin/bash
 
-
 set -e
 
+# Renkler
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -33,13 +33,13 @@ loading() {
     printf "    \b\b\b\b"
 }
 
-# Root kontrolü
-check_root() {
-    if [[ $EUID -eq 0 ]]; then
-        echo -e "${RED}Bu script root olarak çalıştırılmamalı!${NC}"
-        exit 1
-    fi
-}
+# Root kontrolü - Devre dışı bırakıldı
+# check_root() {
+#     if [[ $EUID -eq 0 ]]; then
+#         echo -e "${RED}Bu script root olarak çalıştırılmamalı!${NC}"
+#         exit 1
+#     fi
+# }
 
 # Bağımlılıkları yükle
 install_dependencies() {
@@ -235,6 +235,7 @@ update_cli() {
     echo -e "${GREEN}✓ Octra CLI güncellendi${NC}"
 }
 
+# Ana menü
 main_menu() {
     while true; do
         show_banner
@@ -251,7 +252,7 @@ main_menu() {
         
         case $choice in
             1)
-                check_root
+                # check_root - Devre dışı
                 install_dependencies
                 install_nodejs
                 generate_wallet

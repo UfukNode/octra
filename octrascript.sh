@@ -18,7 +18,6 @@ show_banner() {
     echo ""
 }
 
-# Yükleme animasyonu
 loading() {
     local pid=$1
     local delay=0.1
@@ -33,13 +32,13 @@ loading() {
     printf "    \b\b\b\b"
 }
 
-# Root kontrolü
-check_root() {
-    if [[ $EUID -eq 0 ]]; then
-        echo -e "${RED}Bu script root olarak çalıştırılmamalı!${NC}"
-        exit 1
-    fi
-}
+# Root kontrolü - Devre dışı bırakıldı
+# check_root() {
+#     if [[ $EUID -eq 0 ]]; then
+#         echo -e "${RED}Bu script root olarak çalıştırılmamalı!${NC}"
+#         exit 1
+#     fi
+# }
 
 # Bağımlılıkları yükle
 install_dependencies() {
@@ -244,7 +243,6 @@ main_menu() {
         
         case $choice in
             1)
-                check_root
                 install_dependencies
                 install_nodejs
                 generate_wallet

@@ -1,4 +1,58 @@
-#!/bin/bash
+generate_wallet() {
+    echo -e "${YELLOW}Otomatik cüzdan oluşturuluyor...${NC}"
+    
+    cat > create_wallet.js << 'EOF'
+const { Wallet } = require('ethers');
+const fs = require('fs');
+
+// Yeni cüzdan oluştur
+const wallet = Wallet.createRandom();
+
+// Base64 formatında private key
+const privateKeyB64 = Buffer.from(wallet.privateKey.slice(2), 'hex').toString('base64');
+
+// Octra formatında adres (oct prefix'i ile)
+const octraAddress = 'oct' + wallet.address.slice(2);
+
+// Cüzdan bilgileri
+const walletInfo = {
+    address: wallet.address,
+    octraAddress: octraAddress,
+    privateKey: wallet.privateKey,
+    privateKeyB64: privateKeyB64,
+    mnemonic: wallet.mnemonic.phrase
+};
+
+// Cüzdan bilgilerini kaydet
+fs.writeFileSync('wallet_info.json', JSON.stringify(walletInfo, null, 2));
+
+// Validator config dosyası oluştur
+const validatorConfig = {
+    validator_address: octraAddress,
+    validator_name: "Validator_" + wallet.address.slice(2, 8),
+    commission_rate: "0.10",
+    max_commission_rate: "0.20",
+    max_commission_change_rate: "0.01",
+    min_self_delegation: "1",
+    details: "Octra Testnet Validator",
+    website: "https://octra.xyz",
+    security_contact: "validator@octra.xyz",
+    identity: wallet.address.slice(2, 10)
+};
+
+// Hash config dosyasını oluştur
+fs.writeFileSync('hash_config.json', JSON.stringify(validatorConfig, null, 2));
+
+// Ekrana yazdır
+console.log('\n========== CÜZDAN BİLGİLERİ ==========');
+console.log('Ethereum Adresi:', wallet.address);
+console.log('Octra Adresi:', octraAddress);
+console.log('Private Key (Hex):', wallet.privateKey);
+console.log('Mnemonic:', wallet.mnemonic.phrase);
+console.log('=====================================\n');
+console.log('BU BİLGİLERİ GÜVENLİ BİR YERE KAYDEDİN!\n');
+EOF
+
 
 set -e
 
@@ -51,7 +105,6 @@ install_dependencies() {
     echo -e "${GREEN}✓ Bağımlılıklar yüklendi${NC}"
 }
 
-# Node.js yükle
 install_nodejs() {
     if ! command -v node &> /dev/null; then
         echo -e "${YELLOW}Node.js yükleniyor...${NC}"
@@ -68,7 +121,6 @@ install_nodejs() {
     fi
 }
 
-# Cüzdan oluştur
 generate_wallet() {
     echo -e "${YELLOW}Otomatik cüzdan oluşturuluyor...${NC}"
     
@@ -124,6 +176,72 @@ EOF
         echo -e "${GREEN}✓ Cüzdan başarıyla oluşturuldu!${NC}"
         echo -e "${YELLOW}Cüzdan bilgileri 'wallet_info.json' dosyasına kaydedildi${NC}"
         
+        # Global değişkenlere kaydet
+        export WALLET_PRIVATE_KEY_B64="$PRIVATE_KEY_B64"
+        export WALLET_OCTRA_ADDRESS="$OCTRA_ADDRESS"
+        
+        echo -e "${CYAN}Faucet almak için bu adresi kullanın: ${GREEN}$OCTRA_ADDRESS${NC}"
+        echo -e "${YELLOW}NOT: Faucet sitesinde validator seçeneğini İŞARETLEMEYİN!${NC}"
+        echo -e "${YELLOW}Faucet sitesi: https://faucet.octra.xyz${NC}"
+        echo ""
+        read -p "Faucet aldıktan sonra devam etmek için ENTER'a basın..."
+    else
+        echo -e "${RED}Cüzdan oluşturma başarısız!${NC}"
+        exit 1
+    fi
+}
+    cat > create_wallet.js << 'EOF'
+const { Wallet } = require('ethers');
+const fs = require('fs');
+
+// Yeni cüzdan oluştur
+const wallet = Wallet.createRandom();
+
+// Base64 formatında private key
+const privateKeyB64 = Buffer.from(wallet.privateKey.slice(2), 'hex').toString('base64');
+
+// Octra formatında adres (oct prefix'i ile)
+const octraAddress = 'oct' + wallet.address.slice(2);
+
+// Cüzdan bilgileri
+const walletInfo = {
+    address: wallet.address,
+    octraAddress: octraAddress,
+    privateKey: wallet.privateKey,
+    privateKeyB64: privateKeyB64,
+    mnemonic: wallet.mnemonic.phrase
+};
+
+// Cüzdan bilgilerini kaydet
+fs.writeFileSync('wallet_info.json', JSON.stringify(walletInfo, null, 2));
+
+// Ekrana yazdır
+console.log('\n========== CÜZDAN BİLGİLERİ ==========');
+console.log('Ethereum Adresi:', wallet.address);
+console.log('Octra Adresi:', octraAddress);
+console.log('Private Key (Hex):', wallet.privateKey);
+console.log('Private Key (B64):', privateKeyB64);
+console.log('Mnemonic:', wallet.mnemonic.phrase);
+console.log('=====================================\n');
+console.log('BU BİLGİLERİ GÜVENLİ BİR YERE KAYDEDİN!\n');
+EOF
+
+    if [ ! -d "node_modules" ]; then
+        echo -e "${YELLOW}Gerekli paketler yükleniyor...${NC}"
+        npm init -y &> /dev/null
+        npm install ethers &> /dev/null
+    fi
+    
+    node create_wallet.js
+    
+    if [ -f "wallet_info.json" ]; then
+        PRIVATE_KEY_B64=$(cat wallet_info.json | jq -r '.privateKeyB64')
+        OCTRA_ADDRESS=$(cat wallet_info.json | jq -r '.octraAddress')
+        
+        echo -e "${GREEN}✓ Cüzdan başarıyla oluşturuldu!${NC}"
+        echo -e "${YELLOW}Cüzdan bilgileri 'wallet_info.json' dosyasına kaydedildi${NC}"
+        
+        # Global değişkenlere kaydet
         export WALLET_PRIVATE_KEY_B64="$PRIVATE_KEY_B64"
         export WALLET_OCTRA_ADDRESS="$OCTRA_ADDRESS"
         
@@ -183,7 +301,6 @@ import subprocess
 import sys
 import os
 
-# CLI komutlarını çalıştır
 def run_cli_command(command):
     try:
         # CLI'yi subprocess olarak çalıştır
@@ -328,7 +445,6 @@ main_menu() {
         
         case $choice in
             1)
-                # check_root - Devre dışı
                 install_dependencies
                 install_nodejs
                 generate_wallet

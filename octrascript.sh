@@ -156,20 +156,29 @@ open_testnet_interface() {
         return
     fi
     
+    # Screen oturumu var mı kontrol et
     if screen -list | grep -q "\.octra"; then
         echo -e "${CYAN}Mevcut screen oturumuna bağlanılıyor...${NC}"
         screen -r octra
     else
         echo -e "${GREEN}Yeni screen oturumu oluşturuluyor...${NC}"
+        
+        # Tam yol ile çalıştır
+        CURRENT_DIR=$(pwd)
         cd octra_pre_client
-        screen -dmS octra
-        screen -S octra -X stuff "source venv/bin/activate\n"
-        screen -S octra -X stuff "python3 cli.py\n"
-        sleep 1
+        
+        # Screen'i doğrudan CLI ile başlat
+        screen -dmS octra bash -c "cd $CURRENT_DIR/octra_pre_client && source venv/bin/activate && python3 cli.py; exec bash"
+        
+        # Kısa bir bekleme
+        sleep 2
+        
+        # Screen'e bağlan
         screen -r octra
     fi
 }
 
+# CLI güncelleme
 update_cli() {
     echo -e "${YELLOW}Octra CLI güncelleniyor...${NC}"
     
@@ -190,6 +199,7 @@ update_cli() {
     cd ..
 }
 
+# Ana menü
 main_menu() {
     while true; do
         show_banner
@@ -218,6 +228,7 @@ main_menu() {
                 ;;
             3)
                 open_testnet_interface
+                # Screen'den çıkıldığında menüye dön
                 ;;
             4)
                 update_cli
@@ -235,4 +246,5 @@ main_menu() {
     done
 }
 
+# Scripti başlat
 main_menu

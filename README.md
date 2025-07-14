@@ -46,9 +46,9 @@ sudo ./octrascript.sh
 
 ### 4. Cüzdan Oluşturma
 
-→ Script menüsünden `1` numaralı seçeneği seçerek tam kurulumu başlatın.
-→ WSL kullanıyorsanız: `http://localhost:8888`
-→ VPS kullanıyorsanız: `http://<sunucu-ip>:8888`
+- Script menüsünden `1` numaralı seçeneği seçerek tam kurulumu başlatın.
+- WSL kullanıyorsanız: `http://localhost:8888`
+- VPS kullanıyorsanız: `http://<sunucu-ip>:8888`
 
 Tarayıcıdan bu adrese gidin → “New Wallet” butonuna tıklayın → Verilen bilgileri kaydedin.
 
@@ -68,25 +68,25 @@ Test token almak için şu adrese gidin:
 
 ### 6. CLI Arayüzü Başlat
 
-→ Cüzdan ve faucet işlemini tamamladıktan sonra ENTER’a basın
-→ Privkey ve adres bilgilerinizi girin
-→ Ana menüden `4` numaralı seçeneği seçerek CLI arayüzünü başlatın
+- Cüzdan ve faucet işlemini tamamladıktan sonra ENTER’a basın
+- Privkey ve adres bilgilerinizi girin
+- Ana menüden `4` numaralı seçeneği seçerek CLI arayüzünü başlatın
 
 ---
 
 ### ⚠️ Ekstra Bilgi
 
-→ CLI arayüzü bozuk görünürse `2` yazıp ENTER yapın (görüntü yenilenir)
-→ Hâlâ düzelmezse `CTRL+C` ile çıkın, menüden tekrar `4`’ü seçerek arayüzü yeniden başlatın
+- CLI arayüzü bozuk görünürse `2` yazıp ENTER yapın (görüntü yenilenir)
+- Hâlâ düzelmezse `CTRL+C` ile çıkın, menüden tekrar `4`’ü seçerek arayüzü yeniden başlatın
 
 ---
 
 ### 7. TX Atma
 
-→ CLI arayüzünde `1` yazın
-→ Aktif bir cüzdan adresi girin (örnek: `oct...`)
-→ Göndermek istediğiniz miktarı yazın
-→ ENTER’a basarak işlemi tamamlayın
+- CLI arayüzünde `1` yazın
+- Aktif bir cüzdan adresi girin (örnek: `oct...`)
+- Göndermek istediğiniz miktarı yazın
+- ENTER’a basarak işlemi tamamlayın
 
 ---
 
@@ -100,9 +100,9 @@ Test token almak için şu adrese gidin:
 
 ### 9. Private Transfer
 
-→ CLI arayüzünde `6` yazın
-→ Aktif bir alıcı adresi girin
-→ Gönderilecek miktarı yazıp işlemi tamamlayın
+- CLI arayüzünde `6` yazın
+- Aktif bir alıcı adresi girin
+- Gönderilecek miktarı yazıp işlemi tamamlayın
 
 ---
 
@@ -110,15 +110,15 @@ Test token almak için şu adrese gidin:
 
 Multi önermem, ben multici değil emekçi bir adamım ama yersen.
 
-→ Ana menüden `CTRL+C` ile çıkış yap.
+- Ana menüden `CTRL+C` ile çıkış yap.
 
 ```bash
 rm -rf octra_pre_client/wallet.json  # Eski cüzdanı sil
 ./octrascript.sh  # Script menüsüne geri dön
 ```
 
-→ Menüde `3` seçeneğini seç → Yeni cüzdan bilgilerini gir
-→ Ardından CLI arayüzünü başlat
+- Menüde `3` seçeneğini seç → Yeni cüzdan bilgilerini gir
+- Ardından CLI arayüzünü başlat
 
 ---
 

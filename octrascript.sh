@@ -2,6 +2,7 @@
 
 set -e
 
+# Renkler
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -10,6 +11,7 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# Banner
 show_banner() {
     clear
     echo -e "${PURPLE}╔════════════════════════════════════════╗${NC}"
@@ -19,6 +21,7 @@ show_banner() {
     echo ""
 }
 
+# Yükleme animasyonu
 loading() {
     local pid=$1
     local delay=0.1
@@ -55,6 +58,7 @@ get_ip_address() {
     fi
 }
 
+# Bağımlılıkları yükle
 install_dependencies() {
     echo -e "${YELLOW}Bağımlılıklar yükleniyor...${NC}"
     {
@@ -65,6 +69,7 @@ install_dependencies() {
     echo -e "${GREEN}✓ Bağımlılıklar yüklendi${NC}"
 }
 
+# Node.js yükle
 install_nodejs() {
     if ! command -v node &> /dev/null; then
         echo -e "${YELLOW}Node.js yükleniyor...${NC}"
@@ -81,6 +86,7 @@ install_nodejs() {
     fi
 }
 
+# Cüzdan oluştur
 generate_wallet() {
     echo -e "${YELLOW}Cüzdan oluşturucu hazırlanıyor...${NC}"
     
@@ -120,6 +126,7 @@ generate_wallet() {
     cd ..
 }
 
+# CLI kurulumu
 setup_octra_cli() {
     echo -e "${YELLOW}Octra CLI kuruluyor...${NC}"
     
@@ -148,6 +155,7 @@ setup_octra_cli() {
     cd ..
 }
 
+# Testnet arayüzünü aç
 open_testnet_interface() {
     echo -e "${YELLOW}Octra Testnet arayüzü açılıyor...${NC}"
     
@@ -156,17 +164,22 @@ open_testnet_interface() {
         return
     fi
     
-    # Mevcut screen oturumunu kontrol et
-    if screen -list | grep -q "octra"; then
-        echo -e "${CYAN}Mevcut Octra screen oturumuna bağlanılıyor...${NC}"
-        screen -r octra
-    else
-        echo -e "${YELLOW}Yeni screen oturumu oluşturuluyor...${NC}"
-        cd octra_pre_client
-        screen -S octra bash -c "source venv/bin/activate && python3 cli.py"
-    fi
+    cd octra_pre_client
+    
+    # Venv'i aktif et ve CLI'yi çalıştır
+    echo -e "${GREEN}Testnet UI başlatılıyor...${NC}"
+    
+    # Screen içinde çalıştır
+    screen -dmS octra bash -c "source venv/bin/activate && python3 cli.py"
+    
+    # Kısa bir bekleme
+    sleep 2
+    
+    # Screen'e bağlan
+    screen -r octra
 }
 
+# CLI güncelleme
 update_cli() {
     echo -e "${YELLOW}Octra CLI güncelleniyor...${NC}"
     
@@ -187,18 +200,18 @@ update_cli() {
     cd ..
 }
 
+# Ana menü
 main_menu() {
     while true; do
         show_banner
         echo -e "${CYAN}Bir seçenek seçin:${NC}"
         echo "1) Tam kurulum"
         echo "2) Cüzdan oluştur"
-        echo "3) CLI kur"
-        echo "4) Testnet arayüzüne git"
-        echo "5) CLI güncelle"
-        echo "6) Çıkış"
+        echo "3) Testnet arayüzüne git"
+        echo "4) CLI güncelle"
+        echo "5) Çıkış"
         echo ""
-        read -p "Seçiminizi girin [1-6]: " choice
+        read -p "Seçiminizi girin [1-5]: " choice
 
         case $choice in
             1)
@@ -207,7 +220,7 @@ main_menu() {
                 generate_wallet
                 setup_octra_cli
                 echo -e "${GREEN}Kurulum tamamlandı!${NC}"
-                echo -e "${YELLOW}Testnet arayüzüne gitmek için 4'ü seçin${NC}"
+                echo -e "${YELLOW}Testnet arayüzüne gitmek için 3'ü seçin${NC}"
                 read -p "Devam etmek için ENTER'a basın..."
                 ;;
             2)
@@ -215,18 +228,14 @@ main_menu() {
                 read -p "Devam etmek için ENTER'a basın..."
                 ;;
             3)
-                setup_octra_cli
-                read -p "Devam etmek için ENTER'a basın..."
-                ;;
-            4)
                 open_testnet_interface
                 # Screen'den çıkıldığında menüye dön
                 ;;
-            5)
+            4)
                 update_cli
                 read -p "Devam etmek için ENTER'a basın..."
                 ;;
-            6)
+            5)
                 echo -e "${GREEN}Güle güle!${NC}"
                 exit 0
                 ;;
@@ -238,4 +247,5 @@ main_menu() {
     done
 }
 
+# Scripti başlat
 main_menu

@@ -13,8 +13,7 @@ NC='\033[0m'
 show_banner() {
     clear
     echo -e "${PURPLE}╔════════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║   UFUK DEGEN TARAFINDAN HAZIRLANDI     ║${NC}"
-    echo -e "${PURPLE}║       OCTRA TESTNET OTO SCRIPT         ║${NC}"
+    echo -e "${PURPLE}║    UFUK DEGEN TARAFINDAN HAZIRLANDI    ║${NC}"
     echo -e "${PURPLE}╚════════════════════════════════════════╝${NC}"
     echo ""
 }

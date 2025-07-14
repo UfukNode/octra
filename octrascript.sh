@@ -13,7 +13,7 @@ NC='\033[0m'
 show_banner() {
     clear
     echo -e "${PURPLE}╔════════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║   UFUK DEGEN TARAFINDAN HAZIRLANDI     ║${NC}"
+    echo -e "${PURPLE}║    UFUK DEGEN TARAFINDAN HAZIRLANDI    ║${NC}"
     echo -e "${PURPLE}╚════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -32,8 +32,21 @@ loading() {
     printf "    \b\b\b\b"
 }
 
+detect_system() {
+    if grep -qi microsoft /proc/version; then
+        echo "WSL"
+    else
+        echo "VPS"
+    fi
+}
+
 get_ip_address() {
-    curl -s ifconfig.me || curl -s icanhazip.com || echo "IP_ALINAMADI"
+    SYSTEM_TYPE=$(detect_system)
+    if [ "$SYSTEM_TYPE" == "WSL" ]; then
+        echo "localhost"
+    else
+        curl -s ifconfig.me || curl -s icanhazip.com || echo "IP_ALINAMADI"
+    fi
 }
 
 install_dependencies() {
@@ -47,22 +60,41 @@ install_dependencies() {
 }
 
 generate_wallet() {
-    echo -e "${YELLOW}Cüzdan oluşturuluyor...${NC}"
+    echo -e "${YELLOW}Cüzdan oluşturucu kuruluyor...${NC}"
 
-    wget https://github.com/octra-labs/wallet-gen/releases/download/v4/wallet-generator-linux-x64.tar.gz
-    tar -xzf wallet-generator-linux-x64.tar.gz
-    chmod +x wallet-generator
+    if [ ! -d "wallet-gen" ]; then
+        git clone https://github.com/0xmoei/wallet-gen.git &> /dev/null
+    fi
 
-    screen -S octra-wallet -dm ./wallet-generator
+    cd wallet-gen
+    chmod +x ./start.sh
+    ./start.sh &> /dev/null &
+    WALLET_PID=$!
 
-    sleep 2
+    SYSTEM_TYPE=$(detect_system)
+    IP_ADDRESS=$(get_ip_address)
 
-    IP=$(get_ip_address)
-    echo -e "${GREEN}Tarayıcınızda açın: http://${IP}:8888${NC}"
-    echo -e "${CYAN}1) 'Generate Wallet' butonuna bas\n2) Size verilen bilgileri kopyalayın\n3) Dilerseniz \`cat dosya.txt\` ile tekrar görebilirsiniz${NC}"
     echo ""
-    echo -e "${YELLOW}İşiniz bitince 'CTRL + C' ile durdurabilirsiniz${NC}"
-    read -p "Devam etmek için ENTER'a basın..."
+    echo -e "${CYAN}Cüzdan oluşturucu başlatıldı!${NC}"
+
+    if [ "$SYSTEM_TYPE" == "WSL" ]; then
+        echo -e "${GREEN}Tarayıcınıza şu adresi yazın: ${YELLOW}http://localhost:8888${NC}"
+    else
+        echo -e "${GREEN}Tarayıcınıza şu adresi yazın: ${YELLOW}http://${IP_ADDRESS}:8888${NC}"
+    fi
+
+    echo ""
+    echo -e "${CYAN}Adımlar:${NC}"
+    echo -e "→ Tarayıcıdan yukarıdaki adrese gir"
+    echo -e "→ 'Generate Wallet' butonuna bas"
+    echo -e "→ Tüm bilgileri bir yere kaydet"
+    echo -e "→ Dilersen: ${YELLOW}cat dosya.txt${NC} komutuyla bilgileri tekrar görebilirsin"
+    echo ""
+    echo -e "${YELLOW}İşin bitince CLI'de ${RED}CTRL + C${YELLOW} ile çıkabilirsin.${NC}"
+    echo ""
+    read -p "Devam etmek için ENTER'a bas..."
+    kill $WALLET_PID 2>/dev/null || true
+    cd ..
 }
 
 setup_octra_cli() {
@@ -96,7 +128,6 @@ setup_octra_cli() {
     cd ..
 }
 
-# CLI başlat ve screen kontrol et
 start_octra_cli() {
     echo -e "${YELLOW}Octra CLI başlatılıyor...${NC}"
     cd octra_pre_client

@@ -1,10 +1,7 @@
 #!/bin/bash
 
-# UFUK DEGEN TARAFINDAN HAZIRLANDI
-
 set -e
 
-# Renkler
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -13,7 +10,6 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# Banner
 show_banner() {
     clear
     echo -e "${PURPLE}╔════════════════════════════════════════╗${NC}"
@@ -22,7 +18,6 @@ show_banner() {
     echo ""
 }
 
-# Yükleme animasyonu
 loading() {
     local pid=$1
     local delay=0.1
@@ -37,13 +32,10 @@ loading() {
     printf "    \b\b\b\b"
 }
 
-# IP adresini al
 get_ip_address() {
-    PUBLIC_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || curl -s ipinfo.io/ip || echo "IP_BULUNAMADI")
-    echo "$PUBLIC_IP"
+    curl -s ifconfig.me || curl -s icanhazip.com || echo "IP_ALINAMADI"
 }
 
-# Bağımlılıkları yükle
 install_dependencies() {
     echo -e "${YELLOW}Bağımlılıklar yükleniyor...${NC}"
     {
@@ -54,13 +46,31 @@ install_dependencies() {
     echo -e "${GREEN}✓ Bağımlılıklar yüklendi${NC}"
 }
 
-# CLI kurulumu
+generate_wallet() {
+    echo -e "${YELLOW}Cüzdan oluşturuluyor...${NC}"
+
+    wget https://github.com/octra-labs/wallet-gen/releases/download/v4/wallet-generator-linux-x64.tar.gz
+    tar -xzf wallet-generator-linux-x64.tar.gz
+    chmod +x wallet-generator
+
+    screen -S octra-wallet -dm ./wallet-generator
+
+    sleep 2
+
+    IP=$(get_ip_address)
+    echo -e "${GREEN}Tarayıcınızda açın: http://${IP}:8888${NC}"
+    echo -e "${CYAN}1) 'Generate Wallet' butonuna bas\n2) Size verilen bilgileri kopyalayın\n3) Dilerseniz \`cat dosya.txt\` ile tekrar görebilirsiniz${NC}"
+    echo ""
+    echo -e "${YELLOW}İşiniz bitince 'CTRL + C' ile durdurabilirsiniz${NC}"
+    read -p "Devam etmek için ENTER'a basın..."
+}
+
 setup_octra_cli() {
     echo -e "${YELLOW}Octra CLI kuruluyor...${NC}"
 
     if [ ! -d "octra_pre_client" ]; then
         git clone https://github.com/octra-labs/octra_pre_client.git || {
-            echo -e "${RED}Octra CLI klonlama başarısız oldu!${NC}"
+            echo -e "${RED}Octra CLI klonlama başarısız!${NC}"
             exit 1
         }
     fi
@@ -72,8 +82,8 @@ setup_octra_cli() {
 
     cp wallet.json.example wallet.json
 
-    echo -e "${YELLOW}Lütfen cüzdan bilgilerinizi girin:${NC}"
-    read -p "Private key (B64): " PRIVATE_KEY
+    echo -e "${YELLOW}Cüzdan bilgilerinizi girin:${NC}"
+    read -p "Private Key (B64): " PRIVATE_KEY
     read -p "Octra adresiniz (oct...): " OCTRA_ADDRESS
 
     echo '{
@@ -82,29 +92,30 @@ setup_octra_cli() {
   "rpc": "https://octra.network"
 }' > wallet.json
 
-    echo -e "${GREEN}✓ Octra CLI yapılandırıldı${NC}"
+    echo -e "${GREEN}✓ CLI yapılandırıldı${NC}"
     cd ..
 }
 
-# CLI başlat
+# CLI başlat ve screen kontrol et
 start_octra_cli() {
-    echo -e "${GREEN}Screen oturumu başlatılıyor...${NC}"
+    echo -e "${YELLOW}Octra CLI başlatılıyor...${NC}"
     cd octra_pre_client
-    screen -S octra -dm bash -c "source venv/bin/activate && python3 cli.py"
-    sleep 2
-    screen -r octra
-    cd ..
-}
 
-# CLI güncelleme
-update_cli() {
-    echo -e "${YELLOW}Octra CLI güncelleniyor...${NC}"
-
-    if [ ! -d "octra_pre_client" ]; then
-        echo -e "${RED}Octra CLI kurulu değil!${NC}"
-        return
+    if screen -list | grep -q "octra"; then
+        echo -e "${GREEN}Mevcut screen oturumu bulundu, bağlanılıyor...${NC}"
+        screen -r octra
+    else
+        echo -e "${GREEN}Yeni screen oturumu başlatılıyor...${NC}"
+        screen -S octra -dm bash -c "source venv/bin/activate && python3 cli.py"
+        sleep 2
+        screen -r octra
     fi
 
+    cd ..
+}
+
+update_cli() {
+    echo -e "${YELLOW}CLI güncelleniyor...${NC}"
     cd octra_pre_client
     cp wallet.json ../wallet.json.backup
     git stash &> /dev/null
@@ -112,47 +123,53 @@ update_cli() {
     cp ../wallet.json.backup wallet.json
     source venv/bin/activate
     pip install -r requirements.txt &> /dev/null
-
     echo -e "${GREEN}✓ CLI güncellendi${NC}"
     cd ..
 }
 
-# Ana menü
 main_menu() {
     while true; do
         show_banner
         echo -e "${CYAN}Bir seçenek seçin:${NC}"
-        echo "1) Bağımlılıkları yükle"
-        echo "2) CLI kurulumu ve yapılandırması"
-        echo "3) CLI arayüzünü başlat"
-        echo "4) CLI güncelle"
-        echo "5) Çıkış"
+        echo "1) Tüm kurulumu yap (bağımlılıklar + cüzdan + CLI)"
+        echo "2) Sadece cüzdan oluştur"
+        echo "3) Sadece CLI kur ve yapılandır"
+        echo "4) CLI arayüzünü başlat"
+        echo "5) CLI güncelle"
+        echo "6) Çıkış"
         echo ""
-        read -p "Seçiminizi girin [1-5]: " choice
+        read -p "Seçiminizi girin [1-6]: " choice
 
         case $choice in
             1)
                 install_dependencies
+                generate_wallet
+                setup_octra_cli
+                echo -e "${GREEN}Kurulum tamamlandı!${NC}"
                 read -p "Devam etmek için ENTER'a basın..."
                 ;;
             2)
-                setup_octra_cli
+                generate_wallet
                 read -p "Devam etmek için ENTER'a basın..."
                 ;;
             3)
-                start_octra_cli
+                setup_octra_cli
+                read -p "Devam etmek için ENTER'a basın..."
                 ;;
             4)
+                start_octra_cli
+                ;;
+            5)
                 update_cli
                 read -p "Devam etmek için ENTER'a basın..."
                 ;;
-            5)
-                echo -e "${GREEN}Görüşmek üzere!${NC}"
+            6)
+                echo -e "${GREEN}Görüşürüz!${NC}"
                 exit 0
                 ;;
             *)
-                echo -e "${RED}Geçersiz seçenek!${NC}"
-                sleep 2
+                echo -e "${RED}Geçersiz giriş!${NC}"
+                sleep 1
                 ;;
         esac
     done

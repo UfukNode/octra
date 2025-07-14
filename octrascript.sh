@@ -5,7 +5,6 @@ set -e
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m'
@@ -13,7 +12,7 @@ NC='\033[0m'
 show_banner() {
     clear
     echo -e "${PURPLE}╔════════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║   UFUK DEGEN TARAFINDAN HAZIRLANDI     ║${NC}"
+    echo -e "${PURPLE}║    UFUK DEGEN TARAFINDAN HAZIRLANDI    ║${NC}"
     echo -e "${PURPLE}╚════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -21,7 +20,7 @@ show_banner() {
 loading() {
     local pid=$1
     local delay=0.1
-    local spinstr='|/-\'
+    local spinstr='|/-\\'
     while [ "$(ps a | awk '{print $1}' | grep $pid)" ]; do
         local temp=${spinstr#?}
         printf " [%c]  " "$spinstr"
@@ -32,29 +31,6 @@ loading() {
     printf "    \b\b\b\b"
 }
 
-# Sistem türünü tespit et
-detect_system() {
-    if grep -qi microsoft /proc/version; then
-        echo "WSL"
-    else
-        echo "VPS"
-    fi
-}
-
-# IP adresini al
-get_ip_address() {
-    SYSTEM_TYPE=$(detect_system)
-    
-    if [ "$SYSTEM_TYPE" == "WSL" ]; then
-        echo "localhost"
-    else
-        # VPS için public IP'yi al
-        PUBLIC_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || curl -s ipinfo.io/ip || echo "IP_BULUNAMADI")
-        echo "$PUBLIC_IP"
-    fi
-}
-
-# Bağımlılıkları yükle
 install_dependencies() {
     echo -e "${YELLOW}Bağımlılıklar yükleniyor...${NC}"
     {
@@ -65,7 +41,6 @@ install_dependencies() {
     echo -e "${GREEN}✓ Bağımlılıklar yüklendi${NC}"
 }
 
-# Node.js yükle
 install_nodejs() {
     if ! command -v node &> /dev/null; then
         echo -e "${YELLOW}Node.js yükleniyor...${NC}"
@@ -82,121 +57,71 @@ install_nodejs() {
     fi
 }
 
-# Cüzdan oluştur
 generate_wallet() {
     echo -e "${YELLOW}Cüzdan oluşturucu hazırlanıyor...${NC}"
-    
-    SYSTEM_TYPE=$(detect_system)
-    IP_ADDRESS=$(get_ip_address)
-    
     if [ ! -d "wallet-gen" ]; then
         git clone https://github.com/0xmoei/wallet-gen.git &> /dev/null
     fi
-    
     cd wallet-gen
     chmod +x ./start.sh
     ./start.sh &> /dev/null &
     WALLET_PID=$!
-    
     echo -e "${CYAN}Cüzdan oluşturucu çalışıyor...${NC}"
-    echo ""
-    
-    if [ "$SYSTEM_TYPE" == "WSL" ]; then
-        echo -e "${YELLOW}WSL kullanıcısı tespit edildi!${NC}"
-        echo -e "${GREEN}Tarayıcınızda şu adrese gidin: http://localhost:8888${NC}"
-    else
-        echo -e "${YELLOW}VPS kullanıcısı tespit edildi!${NC}"
-        echo -e "${GREEN}Tarayıcınızda şu adrese gidin: http://${IP_ADDRESS}:8888${NC}"
-    fi
-    
-    echo ""
-    echo -e "${YELLOW}Cüzdan oluşturma adımları:${NC}"
-    echo -e "1. Yukarıdaki adresi tarayıcınızda açın"
-    echo -e "2. 'GENERATE NEW WALLET' butonuna tıklayın"
-    echo -e "3. Tüm cüzdan bilgilerini kaydedin"
-    echo -e "4. Faucet alın: ${GREEN}https://faucet.octra.xyz${NC}"
-    echo ""
+    echo -e "${YELLOW}Tarayıcıdan aç: ${GREEN}http://localhost:8888${NC}"
     read -p "Cüzdan bilgilerinizi kaydettikten sonra ENTER'a basın..."
-    
     kill $WALLET_PID 2>/dev/null || true
     cd ..
 }
 
-# CLI kurulumu
 setup_octra_cli() {
     echo -e "${YELLOW}Octra CLI kuruluyor...${NC}"
-    
     if [ ! -d "octra_pre_client" ]; then
         git clone https://github.com/octra-labs/octra_pre_client.git || {
-            echo -e "${RED}Octra CLI klonlama başarısız oldu!${NC}"
+            echo -e "${RED}Klonlama başarısız oldu!${NC}"
             exit 1
         }
     fi
-    
     cd octra_pre_client
     python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt &> /dev/null
-    
     cp wallet.json.example wallet.json
-    
-    echo -e "${YELLOW}Lütfen cüzdan bilgilerinizi girin:${NC}"
-    read -p "Private key (B64 formatında): " PRIVATE_KEY
-    read -p "Octra adresiniz (oct... ile başlayan): " OCTRA_ADDRESS
-    
+    echo -e "${YELLOW}Cüzdan bilgilerinizi girin:${NC}"
+    read -p "Private Key (Base64): " PRIVATE_KEY
+    read -p "Octra Adresi (oct...): " OCTRA_ADDRESS
     sed -i "s/private-key-here/$PRIVATE_KEY/g" wallet.json
     sed -i "s/octxxxxxxxx/$OCTRA_ADDRESS/g" wallet.json
-    
     echo -e "${GREEN}✓ Octra CLI yapılandırıldı${NC}"
     cd ..
 }
 
-# Testnet arayüzünü aç
 open_testnet_interface() {
     echo -e "${YELLOW}Octra Testnet arayüzü açılıyor...${NC}"
-    
     if [ ! -d "octra_pre_client" ]; then
-        echo -e "${RED}Octra CLI kurulu değil! Önce kurulum yapın (seçenek 1).${NC}"
-        read -p "Devam etmek için ENTER'a basın..."
+        echo -e "${RED}octra_pre_client dizini yok. Önce CLI kurun.${NC}"
         return
     fi
-    
-    # cli.py dosyasının varlığını kontrol et
-    if [ ! -f "octra_pre_client/cli.py" ]; then
-        echo -e "${RED}cli.py dosyası bulunamadı!${NC}"
+    if [ ! -f "octra_pre_client/run.sh" ]; then
+        echo -e "${RED}run.sh dosyası bulunamadı!${NC}"
         echo -e "${YELLOW}CLI güncellemeyi deneyin (seçenek 4)${NC}"
         read -p "Devam etmek için ENTER'a basın..."
         return
     fi
-    
-    # Screen oturumunu kapat (varsa)
     screen -S octra -X quit 2>/dev/null
-    
-    echo -e "${GREEN}Screen oturumu başlatılıyor...${NC}"
-    
-    # Screen'i başlat ve komutları çalıştır
     cd octra_pre_client
-    screen -S octra -d -m bash -c 'source venv/bin/activate && python3 cli.py'
-    
-    # Kısa bekleme
+    chmod +x run.sh
+    screen -dmS octra bash -c "source venv/bin/activate && ./run.sh"
     sleep 1
-    
-    # Screen'e bağlan
     screen -r octra
-    
-    # Screen'den çıkınca ana dizine dön
     cd ..
 }
 
-# CLI güncelleme
 update_cli() {
     echo -e "${YELLOW}Octra CLI güncelleniyor...${NC}"
-    
     if [ ! -d "octra_pre_client" ]; then
         echo -e "${RED}Octra CLI kurulu değil!${NC}"
         return
     fi
-    
     cd octra_pre_client
     cp wallet.json ../wallet.json.backup
     git stash &> /dev/null
@@ -204,12 +129,10 @@ update_cli() {
     cp ../wallet.json.backup wallet.json
     source venv/bin/activate
     pip install -r requirements.txt &> /dev/null
-    
     echo -e "${GREEN}✓ Octra CLI güncellendi${NC}"
     cd ..
 }
 
-# Ana menü
 main_menu() {
     while true; do
         show_banner
@@ -221,40 +144,15 @@ main_menu() {
         echo "5) Çıkış"
         echo ""
         read -p "Seçiminizi girin [1-5]: " choice
-
         case $choice in
-            1)
-                install_dependencies
-                install_nodejs
-                generate_wallet
-                setup_octra_cli
-                echo -e "${GREEN}Kurulum tamamlandı!${NC}"
-                echo -e "${YELLOW}Testnet arayüzüne gitmek için 3'ü seçin${NC}"
-                read -p "Devam etmek için ENTER'a basın..."
-                ;;
-            2)
-                generate_wallet
-                read -p "Devam etmek için ENTER'a basın..."
-                ;;
-            3)
-                open_testnet_interface
-                # Screen'den çıkıldığında menüye dön
-                ;;
-            4)
-                update_cli
-                read -p "Devam etmek için ENTER'a basın..."
-                ;;
-            5)
-                echo -e "${GREEN}Güle güle!${NC}"
-                exit 0
-                ;;
-            *)
-                echo -e "${RED}Geçersiz seçenek!${NC}"
-                sleep 2
-                ;;
+            1) install_dependencies; install_nodejs; generate_wallet; setup_octra_cli; read -p "ENTER..." ;;
+            2) generate_wallet; read -p "ENTER..." ;;
+            3) open_testnet_interface ;;
+            4) update_cli; read -p "ENTER..." ;;
+            5) echo -e "${GREEN}Güle güle!${NC}"; exit 0 ;;
+            *) echo -e "${RED}Geçersiz!${NC}"; sleep 2 ;;
         esac
     done
 }
 
-# Scripti başlat
 main_menu

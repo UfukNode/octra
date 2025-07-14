@@ -13,7 +13,8 @@ NC='\033[0m'
 show_banner() {
     clear
     echo -e "${PURPLE}╔════════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║    UFUK DEGEN TARAFINDAN HAZIRLANDI    ║${NC}"
+    echo -e "${PURPLE}║   UFUK DEGEN TARAFINDAN HAZIRLANDI     ║${NC}"
+    echo -e "${PURPLE}║       OCTRA TESTNET OTO SCRIPT         ║${NC}"
     echo -e "${PURPLE}╚════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -32,6 +33,7 @@ loading() {
     printf "    \b\b\b\b"
 }
 
+# Sistem türünü tespit et
 detect_system() {
     if grep -qi microsoft /proc/version; then
         echo "WSL"
@@ -40,6 +42,7 @@ detect_system() {
     fi
 }
 
+# IP adresini al
 get_ip_address() {
     SYSTEM_TYPE=$(detect_system)
     
@@ -153,16 +156,15 @@ open_testnet_interface() {
         return
     fi
     
-    cd octra_pre_client
-    source venv/bin/activate
-    
-    echo -e "${GREEN}Testnet arayüzü başlatılıyor...${NC}"
-    echo -e "${YELLOW}Çıkmak için Ctrl+C kullanın${NC}"
-    echo ""
-    
-    python3 cli.py
-    
-    cd ..
+    # Mevcut screen oturumunu kontrol et
+    if screen -list | grep -q "octra"; then
+        echo -e "${CYAN}Mevcut Octra screen oturumuna bağlanılıyor...${NC}"
+        screen -r octra
+    else
+        echo -e "${YELLOW}Yeni screen oturumu oluşturuluyor...${NC}"
+        cd octra_pre_client
+        screen -S octra bash -c "source venv/bin/activate && python3 cli.py"
+    fi
 }
 
 update_cli() {
@@ -218,7 +220,7 @@ main_menu() {
                 ;;
             4)
                 open_testnet_interface
-                read -p "Devam etmek için ENTER'a basın..."
+                # Screen'den çıkıldığında menüye dön
                 ;;
             5)
                 update_cli

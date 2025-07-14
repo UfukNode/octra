@@ -1,3 +1,5 @@
+![GX6YwvoW8AAyCUK](https://github.com/user-attachments/assets/65fbb2b4-43f1-49c9-961c-70d8f4b3b680)
+
 ## Octra Testnet Katılım Rehberi
 
 Bu rehber, tarayıcıdan 2 tıkla yapılan testlerden farklıdır. İşlemler terminal üzerinden, WSL ya da VPS üzerinde yapılır.

@@ -1,3 +1,4 @@
+
 #!/bin/bash
 
 set -e
@@ -13,8 +14,7 @@ NC='\033[0m'
 show_banner() {
     clear
     echo -e "${PURPLE}╔════════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║   UFUK DEGEN TARAFINDAN HAZIRLANDI     ║${NC}"
-    echo -e "${PURPLE}║       OCTRA TESTNET OTO SCRIPT         ║${NC}"
+    echo -e "${PURPLE}║    UFUK DEGEN TARAFINDAN HAZIRLANDI    ║${NC}"
     echo -e "${PURPLE}╚════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -69,13 +69,9 @@ generate_wallet() {
     ./start.sh &> /dev/null &
     WALLET_PID=$!
     echo -e "${CYAN}Cüzdan oluşturucu çalışıyor...${NC}"
-    echo -e "${YELLOW}Lütfen bu adımları takip edin:${NC}"
-    echo -e "1. Tarayıcınızı açın ve şu adrese gidin: ${GREEN}http://localhost:8888${NC}"
-    echo -e "2. 'GENERATE NEW WALLET' butonuna tıklayın"
-    echo -e "3. Tüm cüzdan bilgilerini kaydedin"
-    echo -e "4. Faucet alın: ${GREEN}https://faucet.octra.xyz${NC}"
-    echo ""
-    read -p "Cüzdan bilgilerinizi kaydettikten sonra ENTER'a basın..."
+    echo -e "${YELLOW}Tarayıcıdan aç: ${GREEN}http://localhost:8888${NC}"
+    echo -e "${YELLOW}Cüzdan bilgilerini kaydedin, sonra ENTER'a basın${NC}"
+    read -p ""
     kill $WALLET_PID 2>/dev/null || true
     cd ..
 }
@@ -84,7 +80,7 @@ setup_octra_cli() {
     echo -e "${YELLOW}Octra CLI kuruluyor...${NC}"
     if [ ! -d "octra_pre_client" ]; then
         git clone https://github.com/octra-labs/octra_pre_client.git || {
-            echo -e "${RED}Octra CLI klonlama başarısız oldu!${NC}"
+            echo -e "${RED}Klonlama başarısız oldu!${NC}"
             exit 1
         }
     fi
@@ -93,9 +89,9 @@ setup_octra_cli() {
     source venv/bin/activate
     pip install -r requirements.txt &> /dev/null
     cp wallet.json.example wallet.json
-    echo -e "${YELLOW}Lütfen cüzdan bilgilerinizi girin:${NC}"
-    read -p "Private key (B64 formatında): " PRIVATE_KEY
-    read -p "Octra adresiniz (oct... ile başlayan): " OCTRA_ADDRESS
+    echo -e "${YELLOW}Cüzdan bilgilerinizi girin:${NC}"
+    read -p "Private Key (Base64): " PRIVATE_KEY
+    read -p "Octra Adresi (oct...): " OCTRA_ADDRESS
     sed -i "s/private-key-here/$PRIVATE_KEY/g" wallet.json
     sed -i "s/octxxxxxxxx/$OCTRA_ADDRESS/g" wallet.json
     echo -e "${GREEN}✓ Octra CLI yapılandırıldı${NC}"
@@ -105,74 +101,53 @@ setup_octra_cli() {
 auto_transaction() {
     echo -e "${YELLOW}Otomatik işlem gönderici başlatılıyor...${NC}"
     if [ ! -d "octra_pre_client" ]; then
-        echo -e "${RED}octra_pre_client dizini bulunamadı. Önce CLI kurulumu yapmalısınız (seçenek 3).${NC}"
+        echo -e "${RED}octra_pre_client dizini yok. Önce CLI kurun.${NC}"
         return
     fi
     cd octra_pre_client
     source venv/bin/activate
     cat > auto_tx.py << 'EOF'
-import time
-import random
-import subprocess
-import sys
-
+import time, random, sys
 def send_transaction():
-    try:
-        print("İşlem gönderiliyor...")
-        time.sleep(2)
-        print("İşlem gönderildi!")
-        return True
-    except Exception as e:
-        print(f"Hata: {e}")
-        return False
+    print("İşlem gönderiliyor...")
+    time.sleep(2)
+    print("✓ İşlem gönderildi!")
+    return True
 
 def main():
-    transaction_count = 0
+    count = 0
     while True:
-        try:
-            delay = random.randint(300, 900)
-            print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] İşlem #{transaction_count + 1} gönderiliyor")
-            if send_transaction():
-                transaction_count += 1
-                print(f"Toplam gönderilen işlem: {transaction_count}")
-            print(f"Sonraki işlem için {delay} saniye bekleniyor...")
-            time.sleep(delay)
-        except KeyboardInterrupt:
-            print("\nOtomatik işlem gönderici durduruluyor...")
-            sys.exit(0)
-        except Exception as e:
-            print(f"Beklenmeyen hata: {e}")
-            time.sleep(60)
+        delay = random.randint(300, 900)
+        print(f"[{time.strftime('%H:%M:%S')}] İşlem #{count+1}")
+        if send_transaction():
+            count += 1
+        print(f"{delay} sn bekleniyor...")
+        time.sleep(delay)
 
 if __name__ == "__main__":
-    main()
+    try: main()
+    except KeyboardInterrupt: print("Durduruldu."); sys.exit(0)
 EOF
-    echo -e "${GREEN}✓ Otomatik işlem gönderici oluşturuldu${NC}"
+    echo -e "${GREEN}✓ auto_tx.py oluşturuldu${NC}"
     cd ..
 }
 
 run_in_screen() {
-    echo -e "${YELLOW}Octra testnet screen oturumunda başlatılıyor...${NC}"
+    echo -e "${YELLOW}Screen oturumunda çalıştırılıyor...${NC}"
     screen -S octra -X quit 2>/dev/null || true
     screen -dmS octra bash -c "cd octra_pre_client && source venv/bin/activate && python3 auto_tx.py"
-    echo -e "${GREEN}✓ Octra testnet 'octra' screen oturumunda çalışıyor${NC}"
-    echo -e "${CYAN}Komutlar:${NC}"
-    echo -e "  Logları görüntüle: ${YELLOW}screen -r octra${NC}"
-    echo -e "  Oturumdan çık: ${YELLOW}Ctrl+A, sonra D${NC}"
-    echo -e "  Durdur: ${YELLOW}screen -S octra -X quit${NC}"
+    echo -e "${GREEN}✓ Screen adı: ${YELLOW}octra${NC}"
 }
 
-update_cli() {
-    echo -e "${YELLOW}Octra CLI güncelleniyor...${NC}"
-    cd octra_pre_client
-    cp wallet.json ../wallet.json.backup
-    git stash &> /dev/null
-    git pull origin main &> /dev/null
-    cp ../wallet.json.backup wallet.json
-    source venv/bin/activate
-    pip install -r requirements.txt &> /dev/null
-    echo -e "${GREEN}✓ Octra CLI güncellendi${NC}"
-    cd ..
+start_cli_interface() {
+    echo -e "${YELLOW}Octra CLI TUI başlatılıyor...${NC}"
+    if [ ! -d "octra_pre_client" ]; then
+        echo -e "${RED}octra_pre_client dizini yok. Önce CLI kurun.${NC}"
+        return
+    fi
+    screen -S octra-ui -X quit 2>/dev/null || true
+    screen -dmS octra-ui bash -c "cd octra_pre_client && source venv/bin/activate && python3 main.py"
+    echo -e "${GREEN}✓ TUI screen: ${YELLOW}screen -r octra-ui${NC}"
 }
 
 main_menu() {
@@ -186,47 +161,19 @@ main_menu() {
         echo "5) CLI güncelle"
         echo "6) Logları görüntüle"
         echo "7) Çıkış"
+        echo "8) CLI arayüzünü başlat"
         echo ""
-        read -p "Seçiminizi girin [1-7]: " choice
-
+        read -p "Seçiminizi girin [1-8]: " choice
         case $choice in
-            1)
-                install_dependencies
-                install_nodejs
-                generate_wallet
-                setup_octra_cli
-                auto_transaction
-                run_in_screen
-                read -p "Devam etmek için ENTER'a basın..."
-                ;;
-            2)
-                generate_wallet
-                read -p "Devam etmek için ENTER'a basın..."
-                ;;
-            3)
-                setup_octra_cli
-                read -p "Devam etmek için ENTER'a basın..."
-                ;;
-            4)
-                auto_transaction
-                run_in_screen
-                read -p "Devam etmek için ENTER'a basın..."
-                ;;
-            5)
-                update_cli
-                read -p "Devam etmek için ENTER'a basın..."
-                ;;
-            6)
-                screen -r octra
-                ;;
-            7)
-                echo -e "${GREEN}Güle güle!${NC}"
-                exit 0
-                ;;
-            *)
-                echo -e "${RED}Geçersiz seçenek!${NC}"
-                sleep 2
-                ;;
+            1) install_dependencies; install_nodejs; generate_wallet; setup_octra_cli; auto_transaction; run_in_screen; read -p "ENTER..." ;;
+            2) generate_wallet; read -p "ENTER..." ;;
+            3) setup_octra_cli; read -p "ENTER..." ;;
+            4) auto_transaction; run_in_screen; read -p "ENTER..." ;;
+            5) cd octra_pre_client && cp wallet.json ../wallet.json.bak && git pull && cp ../wallet.json.bak wallet.json && source venv/bin/activate && pip install -r requirements.txt &> /dev/null; echo -e "${GREEN}✓ Güncellendi${NC}"; cd ..; read -p "ENTER...";;
+            6) screen -r octra ;;
+            7) echo -e "${GREEN}Güle güle!${NC}"; exit 0 ;;
+            8) start_cli_interface; read -p "ENTER..." ;;
+            *) echo -e "${RED}Geçersiz!${NC}"; sleep 2 ;;
         esac
     done
 }

@@ -13,7 +13,7 @@ NC='\033[0m'
 show_banner() {
     clear
     echo -e "${PURPLE}╔════════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║    UFUK DEGEN TARAFINDAN HAZIRLANDI    ║${NC}"
+    echo -e "${PURPLE}║   UFUK DEGEN TARAFINDAN HAZIRLANDI     ║${NC}"
     echo -e "${PURPLE}╚════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -54,6 +54,7 @@ get_ip_address() {
     fi
 }
 
+# Bağımlılıkları yükle
 install_dependencies() {
     echo -e "${YELLOW}Bağımlılıklar yükleniyor...${NC}"
     {
@@ -64,6 +65,7 @@ install_dependencies() {
     echo -e "${GREEN}✓ Bağımlılıklar yüklendi${NC}"
 }
 
+# Node.js yükle
 install_nodejs() {
     if ! command -v node &> /dev/null; then
         echo -e "${YELLOW}Node.js yükleniyor...${NC}"
@@ -80,6 +82,7 @@ install_nodejs() {
     fi
 }
 
+# Cüzdan oluştur
 generate_wallet() {
     echo -e "${YELLOW}Cüzdan oluşturucu hazırlanıyor...${NC}"
     
@@ -119,6 +122,7 @@ generate_wallet() {
     cd ..
 }
 
+# CLI kurulumu
 setup_octra_cli() {
     echo -e "${YELLOW}Octra CLI kuruluyor...${NC}"
     
@@ -147,6 +151,7 @@ setup_octra_cli() {
     cd ..
 }
 
+# Testnet arayüzünü aç
 open_testnet_interface() {
     echo -e "${YELLOW}Octra Testnet arayüzü açılıyor...${NC}"
     
@@ -156,26 +161,31 @@ open_testnet_interface() {
         return
     fi
     
-    # Screen oturumu var mı kontrol et
-    if screen -list | grep -q "\.octra"; then
-        echo -e "${CYAN}Mevcut screen oturumuna bağlanılıyor...${NC}"
-        screen -r octra
-    else
-        echo -e "${GREEN}Yeni screen oturumu oluşturuluyor...${NC}"
-        
-        # Tam yol ile çalıştır
-        CURRENT_DIR=$(pwd)
-        cd octra_pre_client
-        
-        # Screen'i doğrudan CLI ile başlat
-        screen -dmS octra bash -c "cd $CURRENT_DIR/octra_pre_client && source venv/bin/activate && python3 cli.py; exec bash"
-        
-        # Kısa bir bekleme
-        sleep 2
-        
-        # Screen'e bağlan
-        screen -r octra
+    # cli.py dosyasının varlığını kontrol et
+    if [ ! -f "octra_pre_client/cli.py" ]; then
+        echo -e "${RED}cli.py dosyası bulunamadı!${NC}"
+        echo -e "${YELLOW}CLI güncellemeyi deneyin (seçenek 4)${NC}"
+        read -p "Devam etmek için ENTER'a basın..."
+        return
     fi
+    
+    # Screen oturumunu kapat (varsa)
+    screen -S octra -X quit 2>/dev/null
+    
+    echo -e "${GREEN}Screen oturumu başlatılıyor...${NC}"
+    
+    # Screen'i başlat ve komutları çalıştır
+    cd octra_pre_client
+    screen -S octra -d -m bash -c 'source venv/bin/activate && python3 cli.py'
+    
+    # Kısa bekleme
+    sleep 1
+    
+    # Screen'e bağlan
+    screen -r octra
+    
+    # Screen'den çıkınca ana dizine dön
+    cd ..
 }
 
 # CLI güncelleme
